@@ -1,0 +1,71 @@
+name: Deploy server -> VPS (no Docker)
+
+on:
+  push:
+    paths:
+      - 'server/**'
+    branches:
+      - main   # change if you deploy from another branch
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (for Actions)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Deploy to VPS via SSH
+        uses: appleboy/ssh-action@v0.1.7
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: ${{ secrets.SERVER_SSH_PORT || 22 }}
+          timeout: 30s
+          script: |
+            set -e
+            APP_DIR="${{ secrets.APP_DIR }}"           # e.g. /home/deployer/apps/edtech
+            REPO="https://github.com/${{ github.repository }}.git"
+            BRANCH="${{ secrets.BRANCH || 'main' }}"
+
+            echo ">> creating app dir if missing"
+            mkdir -p "$APP_DIR"
+            cd "$APP_DIR"
+
+            if [ ! -d ".git" ]; then
+              echo ">> initial clone"
+              git clone --single-branch --branch $BRANCH $REPO .
+            else
+              echo ">> fetching latest"
+              git fetch origin $BRANCH
+              git reset --hard origin/$BRANCH
+            fi
+
+            echo ">> ensure we're in server/ subfolder"
+            cd server || (echo "server folder missing"; exit 1)
+
+            # create .env from secrets (do not echo secrets)
+            echo "DATABASE_URL='${{ secrets.DATABASE_URL }}'" > .env
+            echo "PORT=${{ secrets.PORT || 4000 }}" >> .env
+            # add any other secrets you set in GitHub Secrets:
+            # echo "OTHER_SECRET='${{ secrets.OTHER_SECRET }}'" >> .env
+
+            # install dependencies
+            npm ci --production
+
+            # optional build step (uncomment if you need to run build)
+            # if [ -f package.json ] && jq -e '.scripts.build' package.json >/dev/null 2>&1; then
+            #   npm run build
+            # fi
+
+            # start or restart via pm2
+            if [ -f ecosystem.config.js ]; then
+              pm2 startOrRestart ecosystem.config.js --env production
+            else
+              pm2 startOrRestart index.js --name edtech-server --update-env
+            fi
+
+            pm2 save
+            echo ">> deploy finished"
