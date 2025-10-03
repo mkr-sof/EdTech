@@ -2,6 +2,10 @@
 node_modules/
 client/node_modules/
 server/node_modules/
+server/config.js
+server/knexfile.js
+server/migrations/drop_tables.js
+server/migrations/create_tables.js
 
 # Build outputs
 client/build/

@@ -23,6 +23,17 @@ function normalizeIp(raw){
 }
 
 // Routes
+app.get('/health', async (req, res) => {
+  // optional: check DB connection
+  try {
+    await pool.query('SELECT 1');
+    res.json({ status: 'ok', db: 'ok', time: new Date().toISOString() });
+  } catch (err) {
+    console.error('DB health check failed', err);
+    res.status(500).json({ status: 'error', db: 'down' });
+  }
+});
+
 app.get('/api/ideas', async (req, res) => {
     const rawIp = req.headers['x-forwarded-for'] || req.ip || req.socket.remoteAddress;
     const ip = normalizeIp(rawIp);
@@ -45,7 +56,7 @@ app.get('/api/ideas', async (req, res) => {
 
 app.post('/api/ideas/:id/vote', async (req, res) => {
     const ideaId = parseInt(req.params.id, 10);
-    if (Number.isNaN(ideaId)) return res.status(400).jsin({ error: 'bad_idea_id' });
+    if (Number.isNaN(ideaId)) return res.status(400).json({ error: 'bad_idea_id' });
 
     const rawIp = req.headers['x-forwarded-for'] || req.ip || req.socket.remoteAddress;
     const ip = normalizeIp(rawIp);
