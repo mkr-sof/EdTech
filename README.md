@@ -1,5 +1,5 @@
 # Project Structure
-
+<pre style="white-space: pre-wrap;">
 EdTech/
 │
 ├── client/               # React frontend
@@ -16,7 +16,7 @@ EdTech/
     ├── server.js         # Main server entry point
     ├── package.json
     └── ecosystem.config.js
-
+</pre>
 
   # Requirements
   
